@@ -17,7 +17,8 @@ public class OutlineRenderer : MonoBehaviour
 	public bool drawOnGizmo = true;
 	
 
-	private List<Vector3> tangentPoints = new List<Vector3>();
+	private List<Vector3> tangentPoints1 = new List<Vector3>();
+	private List<Vector3> tangentPoints2 = new List<Vector3>();
 
 	private void OnValidate()
 	{
@@ -53,16 +54,107 @@ public class OutlineRenderer : MonoBehaviour
 			Handles.DrawWireDisc(points_arr[i], Vector3.back, radius_arr[i]);
 		}
 		
-		foreach (var p in tangentPoints)
-		{
-			Gizmos.DrawSphere(p, 0.1f);
-		}
+		Gizmos.color = Color.green;
+		foreach (var p in tangentPoints1) Gizmos.DrawSphere(p, 0.4f);
+		Gizmos.color = Color.white;
+		foreach (var p in tangentPoints2) Gizmos.DrawSphere(p, 0.4f);
 	}
 
-	/// <summary>
-	/// Draws the points through the <see cref="LineRenderer"/> attached to this game obejct
-	/// </summary>
+	
 	public void Draw()
+	{
+		var points = _points.Where(p => p.transform != null).Select(p => (Vector2)p.transform.position).ToArray();
+		var radiuses = _points.Where(p => p.transform != null).Select(p => p.radius).ToArray();
+		
+
+		// all points around all circles
+		List<List<Vector2>> drawingPoints = new List<List<Vector2>>();
+		
+		
+		tangentPoints1.Clear();
+		tangentPoints2.Clear();
+
+		// add all points 
+		for (int i = 0; i < points.Length; i++)
+		{
+			var r = new List<Vector2>();
+			for (int j = 0; j < precision; j++)
+			{
+				r.Add(GetPositionAroundCircle(points[i], radiuses[i], (float)j / (precision - 1) * 360));
+			}
+			drawingPoints.Add(r);
+		}
+		
+		Debug_DrawingPoints(Color.red);
+
+		// remove un-needed points
+		for (int p_ind = 0; p_ind < points.Length; p_ind++)
+		{
+			Debug.Log($"starting {p_ind}");
+			
+			int nextIndex = p_ind == points.Length - 1 ? p_ind - 1 : p_ind + 1;
+			int prevIndex = p_ind == 0 ? p_ind + 1 : p_ind - 1;
+			var c = points[p_ind];
+			var c_next = points[nextIndex];
+			var c_prev = points[prevIndex];
+			var r = radiuses[p_ind];
+			var r_next = radiuses[nextIndex];
+			var r_prev = radiuses[prevIndex];
+			
+			
+			// remove everything from the smaller if two circles inside each other
+			if (Vector2.Distance(c, c_next) <= Mathf.Abs(r - r_next))
+			{
+				var index = r_next > r ? p_ind : nextIndex;
+				drawingPoints[index].Clear();
+			}
+			
+			
+			GetTangentsOfTwoCircle(c, c_next, r, r_next, out var tangent1, out var tangent2);
+			
+			// remove points inside tangents
+			var tang1_local = tangent1 - c;
+			var tang2_local = tangent2 - c;
+			var tang_angle = Vector2.SignedAngle(tang1_local, tang2_local);
+			Debug.Log($"angle: {tang_angle}");
+			
+			var dpoints = drawingPoints[p_ind]; // alias
+			for (int i = 0; i < dpoints.Count; i++)
+			{
+				var alpha = Vector2.SignedAngle(tang1_local, dpoints[i] - c);
+				if (tang_angle > 0 != alpha > 0)
+				{
+					dpoints.RemoveAt(i--);
+					continue;
+				}
+				else if (Mathf.Abs(tang_angle) < Mathf.Abs(alpha))
+				{
+					dpoints.RemoveAt(i--);
+					continue;
+				}
+			}
+
+			tangentPoints1.Add(tangent1);
+			tangentPoints2.Add(tangent2);
+		}
+
+
+		Debug_DrawingPoints(Color.blue);
+
+		void Debug_DrawingPoints(Color color)
+		{
+			for (var i = 0; i < drawingPoints.Count; i++)
+			{
+				var drawingPoint = drawingPoints[i];
+				foreach (var p in drawingPoint)
+				{
+					Debug.DrawLine(p, p + (p - points[i]).normalized * 2, color, 0.01f);
+				}
+			}
+		}
+	}
+	
+	public void Draw_old()
 	{
 		// get nun-empty points 
 		var points_arr = _points.Where(p => p.transform != null).Select(p => (Vector2)p.transform.position).ToArray();
@@ -70,32 +162,32 @@ public class OutlineRenderer : MonoBehaviour
 
 		var positions = new List<Vector2>();
 
-		tangentPoints.Clear();
+		tangentPoints1.Clear();
 		
 		for (int i = 0; i < points_arr.Length; i++)
 		{
 			var c = points_arr[i];
-			var c_next = i == points_arr.Length - 1 ? points_arr[0] : points_arr[i + 1];
-			var c_prev = i == 0 ? points_arr[points_arr.Length - 1] : points_arr[i - 1];
+			var c_next = i == points_arr.Length - 1 ? points_arr[i - 1] : points_arr[i + 1];
+			var c_prev = i == 0 ? points_arr[i + 1] : points_arr[i - 1];
 			var r = radius_arr[i];
-			var r_next = i == radius_arr.Length - 1 ? radius_arr[0] : radius_arr[i + 1];
-			var r_prev = i == 0 ? radius_arr[radius_arr.Length - 1] : radius_arr[i - 1];
+			var r_next = i == radius_arr.Length - 1 ? radius_arr[i - 1] : radius_arr[i + 1];
+			var r_prev = i == 0 ? radius_arr[i + 1] : radius_arr[i - 1];
 			
 			// continue if 2nd is inside 1st or wise versa
 			if(Vector2.Distance(c, c_next) <= Mathf.Abs(r - r_next))
 				continue;
 
 			GetTangentsOfTwoCircle(c, c_next, r, r_next, out var tangent1_next, out var tangent2_next);
-			GetTangentsOfTwoCircle(c, c_next, r, r_next, out var tangent1_prev, out var tangent2_prev);
+			GetTangentsOfTwoCircle(c, c_prev, r, r_prev, out var tangent1_prev, out var tangent2_prev);
 			
-			// var tang1 = 
-
 			// adding lines between tangents
 			var points = OutlineDiscPoints(c, tangent1_next, tangent2_next, true, precision);
 			positions.AddRange(points);
 
-			tangentPoints.Add(tangent1_next);
-			tangentPoints.Add(tangent2_next);
+			tangentPoints1.Add(tangent1_next);
+			tangentPoints1.Add(tangent2_next);
+			tangentPoints1.Add(tangent1_prev);
+			tangentPoints1.Add(tangent2_prev);
 		}
 		if(positions.Count > 0)
 			positions.Add(positions[0]);
