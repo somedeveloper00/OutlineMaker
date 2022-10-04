@@ -91,13 +91,14 @@ public class OutlineRenderer : MonoBehaviour
 			// var tang1 = 
 
 			// adding lines between tangents
-			var points = OutlineDiscPoints(c, tangent1_next, tangent2_next, c.x > c_next.x, precision);
+			var points = OutlineDiscPoints(c, tangent1_next, tangent2_next, true, precision);
 			positions.AddRange(points);
 
 			tangentPoints.Add(tangent1_next);
 			tangentPoints.Add(tangent2_next);
 		}
-		positions.Add(positions[0]);
+		if(positions.Count > 0)
+			positions.Add(positions[0]);
 		
 		_lineRenderer.positionCount = positions.Count;
 		_lineRenderer.SetPositions(positions.Select(p => (Vector3)p).ToArray());
@@ -115,8 +116,8 @@ public class OutlineRenderer : MonoBehaviour
 		var angle = Vector2.SignedAngle(tang1_local, tang2_local);
 		if (clockwise && angle < 0)
 			angle = 360 + angle;
-		else if (!clockwise && angle > 0)
-			angle = 360 - angle;
+		// else if (!clockwise && angle > 0)
+		// 	angle = 360 - angle;
 		var angle_inc = angle / precision;
 
 		// rotating by inc & adding to results
