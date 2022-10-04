@@ -90,56 +90,81 @@ public class OutlineRenderer : MonoBehaviour
 		// remove un-needed points
 		for (int p_ind = 0; p_ind < points.Length; p_ind++)
 		{
-			Debug.Log($"starting {p_ind}");
-			
-			int nextIndex = p_ind == points.Length - 1 ? p_ind - 1 : p_ind + 1;
-			int prevIndex = p_ind == 0 ? p_ind + 1 : p_ind - 1;
-			var c = points[p_ind];
-			var c_next = points[nextIndex];
-			var c_prev = points[prevIndex];
-			var r = radiuses[p_ind];
-			var r_next = radiuses[nextIndex];
-			var r_prev = radiuses[prevIndex];
-			
-			
+			// remove based on the next circle
+			RemoveDrawingPointsIfOutsideTangent(p_ind, p_ind == points.Length - 1 ? 0 : p_ind + 1, true);
+			// remove based on the previous circle
+			RemoveDrawingPointsIfOutsideTangent(p_ind, p_ind == 0 ? points.Length - 1 : p_ind - 1, false);
+		}
+		
+		// draw
+		_lineRenderer.positionCount = drawingPoints.Sum(dp => dp.Count);
+		var linePoints = drawingPoints.SelectMany(dp => dp.Select(p => (Vector3)p)).ToArray();
+		_lineRenderer.SetPositions(linePoints);
+
+
+		Debug_DrawingPoints(Color.blue);
+		
+		
+		void RemoveDrawingPointsIfOutsideTangent(int mainIndex, int otherIndex, bool sort)
+		{
+			var c = points[mainIndex];
+			var c_next = points[otherIndex];
+			var r = radiuses[mainIndex];
+			var r_next = radiuses[otherIndex];
+
+
 			// remove everything from the smaller if two circles inside each other
 			if (Vector2.Distance(c, c_next) <= Mathf.Abs(r - r_next))
 			{
-				var index = r_next > r ? p_ind : nextIndex;
+				var index = r_next > r ? mainIndex : otherIndex;
 				drawingPoints[index].Clear();
 			}
-			
-			
+
+
 			GetTangentsOfTwoCircle(c, c_next, r, r_next, out var tangent1, out var tangent2);
-			
+
+
 			// remove points inside tangents
 			var tang1_local = tangent1 - c;
 			var tang2_local = tangent2 - c;
 			var tang_angle = Vector2.SignedAngle(tang1_local, tang2_local);
-			Debug.Log($"angle: {tang_angle}");
-			
-			var dpoints = drawingPoints[p_ind]; // alias
+			var dpoints = drawingPoints[mainIndex]; // alias
 			for (int i = 0; i < dpoints.Count; i++)
 			{
 				var alpha = Vector2.SignedAngle(tang1_local, dpoints[i] - c);
-				if (tang_angle > 0 != alpha > 0)
+				if (tang_angle >= 0)
 				{
-					dpoints.RemoveAt(i--);
-					continue;
+					if (alpha < 0 || tang_angle < alpha) 
+						dpoints.RemoveAt(i--);
 				}
-				else if (Mathf.Abs(tang_angle) < Mathf.Abs(alpha))
+				else
 				{
-					dpoints.RemoveAt(i--);
-					continue;
+					if (alpha < 0 && alpha > tang_angle) 
+						dpoints.RemoveAt(i--);
 				}
 			}
 
+			
+			if (sort)
+			{
+				// sort lines by angular distance from tangent 1
+				drawingPoints[mainIndex].Sort((p1, p2) =>
+				{
+					float v1 = Vector2.SignedAngle(tang1_local, p1 - c);
+					if (v1 < 0) v1 = 360 + v1;
+					float v2 = Vector2.SignedAngle(tang1_local, p2 - c);
+					if (v2 < 0) v2 = 360 + v2;
+					return v1.CompareTo(v2);
+				});
+			}
+			
+			// adding debugging tangent spheres
 			tangentPoints1.Add(tangent1);
 			tangentPoints2.Add(tangent2);
+			
 		}
 
-
-		Debug_DrawingPoints(Color.blue);
+	
 
 		void Debug_DrawingPoints(Color color)
 		{
