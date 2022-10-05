@@ -43,7 +43,6 @@ Shader "Path Outliner"
 
             float is_inside(const float2 uv)
             {
-                float debug = -1;
                 for (int i = 0; i < _Count; i++)
                 {
                     const float2 c1 = _Centers[i].xy;
@@ -53,23 +52,19 @@ Shader "Path Outliner"
                     
                     // check if inside circle
                     if(distance(uv, _Centers[i]) <= _Radiuses[i])
-                    {
                         return 1;
-                    }
-                    if(i == _Count - 1) continue;
-                    if(debug != -1) continue;
+                    
+                    
                     // check if between two circles
+                    if(i == _Count - 1) continue;
                     const float d = dot(uv - c1, c2 - c1) / distance(c2, c1);
                     const float v = d / distance(c1, c2);
-                    // debug = frac(d);
                     const float2 p = lerp(c1, c2, v);
                     const float r = lerp(r1, r2, v);
                     if(v < 1 && v > 0 && distance(uv, p) <= r)
-                    {
                         return 1;
-                    }
                 }
-                return max(0, debug);
+                return 0;
             }
 
             float is_outline(const float2 uv)
