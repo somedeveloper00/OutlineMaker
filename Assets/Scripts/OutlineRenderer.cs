@@ -63,10 +63,9 @@ public class OutlineRenderer : MonoBehaviour
 	
 	public void Draw()
 	{
-		foreach (var circle in circles)
-		{
-			circle.Update();
-		}
+		// updating circles
+		foreach (var circle in circles) circle.Update();
+		
 		// all points around all circles
 		List<List<Vector2>> drawingPoints = new List<List<Vector2>>();
 		
@@ -318,16 +317,18 @@ public class OutlineRenderer : MonoBehaviour
 	[Serializable]
 	public class Circle
 	{
+		[SerializeField] Transform transform;
+		public float r;
+		public Vector2 c { get; private set; }
+
 		public bool isValid() => transform != null;
 
+		/// <summary>
+		/// Updates circle's stats depending on the assigned <see cref="transform"/>
+		/// </summary>
 		public void Update()
 		{
 			if (isValid()) c = transform.position;
 		}
-
-		[SerializeField] Transform transform;
-
-		public float r;
-		public Vector2 c { get; private set; }
 	}
 }
