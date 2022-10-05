@@ -15,6 +15,7 @@ public class OutlineRenderer : MonoBehaviour
 	[Min(10)] public int precision;
 	[SerializeField] private LineRenderer _lineRenderer;
 	public bool drawOnGizmo = true;
+	public bool drawDebugs = true;
 	
 
 	private List<Vector3> tangentPoints1 = new List<Vector3>();
@@ -40,8 +41,8 @@ public class OutlineRenderer : MonoBehaviour
 
 	private void OnDrawGizmos()
 	{
-		if(drawOnGizmo)
-			Draw();
+		if(drawOnGizmo) Draw();
+		if(!drawDebugs) return;
 		
 		// get nun-empty points 
 		var points_arr = circles.Where(p => p.isValid()).Select(p => p.c).ToArray();
@@ -139,7 +140,7 @@ public class OutlineRenderer : MonoBehaviour
 		{
 			var drawingPoints = new List<Vector2>();
 			for (int i = 0; i < drawingCircles.Length; i++) drawingPoints.AddRange(drawingCircles[i].points_1);
-			for (int i = 0; i < drawingCircles.Length; i++) drawingPoints.AddRange(drawingCircles[i].points_2);
+			for (int i = drawingCircles.Length - 1; i >= 0; i--) drawingPoints.AddRange(drawingCircles[i].points_2);
 			_lineRenderer.positionCount = drawingPoints.Count;
 			_lineRenderer.SetPositions(drawingPoints.Select(p => (Vector3)p).ToArray());
 		}
@@ -161,8 +162,11 @@ public class OutlineRenderer : MonoBehaviour
 				out var next_tan1, out var next_tan2);
 			
 			// draw debug tangents
-			Debug.DrawLine(curr_tan1, next_tan2, Color.cyan, 0.01f);
-			Debug.DrawLine(curr_tan2, next_tan1, Color.cyan, 0.01f);
+			if (drawDebugs)
+			{
+				Debug.DrawLine(curr_tan1, next_tan2, Color.cyan, 0.01f);
+				Debug.DrawLine(curr_tan2, next_tan1, Color.cyan, 0.01f);
+			}
 
 
 			RemoveInsidePoints(curr_tan1, curr_tan2, circle1, true);
@@ -183,6 +187,8 @@ public class OutlineRenderer : MonoBehaviour
 				var dpoints = circle.points_1; // alias
 				bool isSecondDeletion = circle.points_1.Count != precision && circle.points_2.Count == 0;
 				int lastDeletionIndex = -1; // the last index that got deleted
+				bool firstIndexDeleted = false;
+
 				
 				for (int i = 0; i < dpoints.Count; i++)
 				{
@@ -191,16 +197,18 @@ public class OutlineRenderer : MonoBehaviour
 					{
 						if (alpha < 0 || tang_angle < alpha)
 						{
-							dpoints.RemoveAt(i--);
+							if (i == 0 && isSecondDeletion) firstIndexDeleted = true;
 							lastDeletionIndex = i;
+							dpoints.RemoveAt(i--);
 						}
 					}
 					else
 					{
 						if (alpha < 0 && alpha > tang_angle)
 						{
-							dpoints.RemoveAt(i--);
+							if (i == 0 && isSecondDeletion) firstIndexDeleted = true;
 							lastDeletionIndex = i;
+							dpoints.RemoveAt(i--);
 						}
 					}
 				}
@@ -208,9 +216,22 @@ public class OutlineRenderer : MonoBehaviour
 				// fit the rest of the remaining points to the 2nd list of points
 				if (isSecondDeletion && lastDeletionIndex != -1)
 				{
-					circle.points_2 =
-						circle.points_1.GetRange(lastDeletionIndex + 1, circle.points_1.Count - lastDeletionIndex - 1);
-					circle.points_1.RemoveRange(lastDeletionIndex + 1, circle.points_1.Count - lastDeletionIndex - 1);
+					var start_index = lastDeletionIndex;
+					var count = circle.points_1.Count - lastDeletionIndex;
+					
+					// checking for ignoring all 1st points
+					if (firstIndexDeleted)
+					{
+						circle.points_2.AddRange(circle1.points_1);
+						circle.points_1.Clear();
+					}
+					else
+					{
+						circle.points_2 =
+							circle.points_1.GetRange(start_index, count);
+						circle.points_1.RemoveRange(start_index, count);
+					}
+					
 				}
 
 
@@ -230,6 +251,7 @@ public class OutlineRenderer : MonoBehaviour
 		}
 		void Debug_DrawingPointsAroundCircle(List<Vector2> points, Vector2 center, Color color)
 		{
+			if(!drawDebugs) return;
 			foreach (var p in points) 
 				Debug.DrawLine(p, end: p + (p - center).normalized * 2, color, 0.01f);
 		}
@@ -378,7 +400,7 @@ public class OutlineRenderer : MonoBehaviour
 	[Serializable]
 	public class Circle
 	{
-		[SerializeField] private Transform transform;
+		public Transform transform;
 		public Vector2 c => transform.position;
 		public float r;
 		public bool isValid() => transform != null;
