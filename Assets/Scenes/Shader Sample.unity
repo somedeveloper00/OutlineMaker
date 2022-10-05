@@ -424,10 +424,10 @@ MonoBehaviour:
     radius: 0.1
   - center: {x: 0.47, y: 0.73}
     radius: 0.09
-  - center: {x: 0.38, y: 0.46}
+  - center: {x: 0.42, y: 0.34}
+    radius: 0.02
+  - center: {x: 0.27, y: 0.54}
     radius: 0.11
-  - center: {x: 0.28, y: 0.09}
-    radius: 0.09
 --- !u!33 &1764247265
 MeshFilter:
   m_ObjectHideFlags: 0
