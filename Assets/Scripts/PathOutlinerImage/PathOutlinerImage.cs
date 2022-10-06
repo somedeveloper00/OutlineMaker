@@ -9,7 +9,8 @@ public class PathOutlinerImage : MonoBehaviour
 	public Renderer renderer;
 
 	public Color color;
-	public int length;
+	[Range(0.001f, 0.1f)]
+	public float length;
 	public Circle[] circles;
 	
 	[Serializable]

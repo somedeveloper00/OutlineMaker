@@ -417,11 +417,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: c3ad1c7b3b0da1349b362b04f51f1c44, type: 2}
   renderer: {fileID: 1764247266}
-  color: {r: 0.010743391, g: 0.5943396, b: 0, a: 1}
-  length: 1
+  color: {r: 0.59607846, g: 0.5952805, b: 0, a: 1}
+  length: 0.0167
   circles:
   - center: {x: 0.74, y: 0.5}
-    radius: 0.1
+    radius: 0.2
   - center: {x: 0.47, y: 0.73}
     radius: 0.09
   - center: {x: 0.42, y: 0.34}

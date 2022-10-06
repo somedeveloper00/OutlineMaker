@@ -41,50 +41,37 @@ Shader "Path Outliner"
             float _Length;
             fixed4 _Color;
 
-            float is_inside(const float2 uv)
+            float is_inside(const float2 uv, const float thickness)
             {
                 for (int i = 0; i < _Count; i++)
                 {
                     const float2 c1 = _Centers[i].xy;
                     const float2 c2 = _Centers[i + 1].xy;
-                    const float r1 = _Radiuses[i];
-                    const float r2 = _Radiuses[i + 1];
+                    const float r1 = max(0, _Radiuses[i] - thickness);
+                    const float r2 = max(0, _Radiuses[i + 1] - thickness);
                     
                     // check if inside circle
-                    if(distance(uv, _Centers[i]) <= _Radiuses[i])
-                        return 1;
+                    // if(distance(uv, c1) <= r1)
+                    //     return 1;
                     
                     
                     // check if between two circles
                     if(i == _Count - 1) continue;
                     const float d = dot(uv - c1, c2 - c1) / distance(c2, c1);
-                    const float v = d / distance(c1, c2);
+                    const float v = saturate(d / distance(c1, c2));
                     const float2 p = lerp(c1, c2, v);
                     const float r = lerp(r1, r2, v);
-                    if(v < 1 && v > 0 && distance(uv, p) <= r)
+                    if(distance(uv, p) <= r)
                         return 1;
                 }
                 return 0;
             }
 
-            float is_outline(const float2 uv)
+            float is_outline(const float2 uv, float thickness)
             {
-                const float inc = 0.01;
-
-                if(is_inside(uv)) return 0;
+                if(is_inside(uv, -thickness/2) && !is_inside(uv, thickness/2))
+                    return 1;
                 
-                for (int ind=0; ind < _Length; ind++)
-                {
-                    for (int x = -_Length; x <= _Length; x++)
-                    {
-                        for (int y = -_Length; y <= _Length; y++)
-                        {
-                            float2 pos = float2 (uv.x + x * inc, uv.y + y * inc);
-                            if(is_inside(pos))
-                                return 1;
-                        }
-                    }
-                }
                 return 0;
             }
 
@@ -98,13 +85,12 @@ Shader "Path Outliner"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // sample the texture
-                fixed4 col = _Color;
-
-
-                if(!is_outline(i.uv))
-                    col = 0;
+                // shade
+                fixed4 col = is_outline(i.uv, _Length*1.5) * _Color * 0.5;
                 
+                // main color
+                col += is_outline(i.uv, _Length) * _Color * 0.5;
+
                 return col;
             }
             ENDCG
